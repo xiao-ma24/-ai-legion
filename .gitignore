@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+**/data/sessions/*.json
+.superpowers/
+*.egg-info/
+dist/
+.venv/
+venv/
+test.py

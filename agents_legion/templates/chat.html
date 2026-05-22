@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block sidebar %}
+<div id="sidebar">
+  <div class="sidebar-header">
+    <h2>AI 军团</h2>
+    <form method="post" action="/chat/new">
+      <button class="btn-new">+ 新对话</button>
+    </form>
+  </div>
+  <div class="session-list">
+    {% for s in sessions %}
+    <a href="/chat/{{ s.id }}"
+       class="sess-item {% if s.id == session_id %}active{% endif %}">
+      <span class="sess-title">{{ s.title }}</span>
+      <span class="sess-meta">{{ s.count }}条 · {{ s.updated }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% for msg in history %}
+<div class="message {{ msg.role }}">{{ msg.content }}</div>
+{% endfor %}
+{% if not history %}
+<div class="message assistant">
+  你好！我是 AI 军团，由三个智能体协同为你服务。
+
+  🌊 发散型 (Qwen) — 广度探索、多角度联想
+  🔬 严谨型 (DeepSeek) — 逻辑推导、步骤验证
+  ⚔️ 批判型 (GLM) — 找漏洞、挑毛病
+
+  请输入你的问题，三路智能体会并行分析，评审整合出最优答案。
+</div>
+{% endif %}
+{% endblock %}
+
+{% block input_area %}
+<form
+  id="chat-form"
+  hx-post="/chat"
+  hx-target="#chat-area"
+  hx-swap="beforeend"
+  hx-on::after-request="this.reset(); document.querySelector('#send-btn').disabled=false; document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight"
+  hx-on::before-request="document.querySelector('#send-btn').disabled=true"
+>
+  <div class="input-area">
+    <textarea name="message" rows="2" placeholder="输入你的问题..." required></textarea>
+    <button type="submit" id="send-btn">发送</button>
+  </div>
+</form>
+{% endblock %}
