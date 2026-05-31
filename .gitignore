@@ -8,3 +8,4 @@ dist/
 .venv/
 venv/
 test.py
+agents_legion/data/pipeline.log

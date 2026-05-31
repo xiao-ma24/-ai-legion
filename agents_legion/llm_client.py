@@ -1,6 +1,15 @@
+import time
 import httpx
 from openai import AsyncOpenAI
 from config import settings
+
+# 全局变量，main.py 在处理任务前设置，LLM 调用时自动上报
+_active_task_id: str | None = None
+
+
+def set_active_task(task_id: str | None):
+    global _active_task_id
+    _active_task_id = task_id
 
 
 def _make_client(api_key: str, base_url: str) -> AsyncOpenAI:
@@ -20,12 +29,14 @@ async def call_qianwen(system_prompt: str, messages: list[dict], model: str | No
     formatted = [{"role": "system", "content": system_prompt}]
     for m in messages:
         formatted.append({"role": m["role"], "content": m["content"]})
+    start = time.time()
     response = await client.chat.completions.create(
         model=model,
         messages=formatted,
         max_tokens=65536,
         extra_body={"enable_thinking": True},
     )
+    _record(model, response.usage, time.time() - start)
     return response.choices[0].message.content
 
 
@@ -36,12 +47,14 @@ async def call_deepseek(system_prompt: str, messages: list[dict], model: str | N
     formatted = [{"role": "system", "content": system_prompt}]
     for m in messages:
         formatted.append({"role": m["role"], "content": m["content"]})
+    start = time.time()
     response = await client.chat.completions.create(
         model=model,
         messages=formatted,
         max_tokens=65536,
         extra_body={"enable_thinking": True},
     )
+    _record(model, response.usage, time.time() - start)
     return response.choices[0].message.content
 
 
@@ -52,9 +65,23 @@ async def call_glm(system_prompt: str, messages: list[dict], model: str | None =
     formatted = [{"role": "system", "content": system_prompt}]
     for m in messages:
         formatted.append({"role": m["role"], "content": m["content"]})
+    start = time.time()
     response = await client.chat.completions.create(
         model=model,
         messages=formatted,
         max_tokens=65536,
     )
+    _record(model, response.usage, time.time() - start)
     return response.choices[0].message.content
+
+
+def _record(model: str, usage, duration: float):
+    """内部：如果设置了 active task，自动上报"""
+    if _active_task_id and usage:
+        from cost_tracker import cost_tracker
+        cost_tracker.record(
+            _active_task_id, model,
+            getattr(usage, "prompt_tokens", 0) or 0,
+            getattr(usage, "completion_tokens", 0) or 0,
+            duration,
+        )

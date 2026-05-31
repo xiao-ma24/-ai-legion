@@ -1,4 +1,6 @@
 import uuid
+import re
+
 
 class TaskManager:
     def __init__(self):
@@ -12,6 +14,20 @@ class TaskManager:
     def push(self, task_id: str, html: str):
         if task_id in self._states:
             self._states[task_id]["progress"].append(html)
+
+    def push_stage(self, task_id: str, html: str, stage_key: str):
+        """同阶段替换：如果已有同 key 的卡片，替换而非追加"""
+        if task_id not in self._states:
+            return
+        state = self._states[task_id]
+        if '_stage_indices' not in state:
+            state['_stage_indices'] = {}
+        indices = state['_stage_indices']
+        if stage_key in indices:
+            state["progress"][indices[stage_key]] = html
+        else:
+            indices[stage_key] = len(state["progress"])
+            state["progress"].append(html)
 
     def set_final(self, task_id: str, html: str):
         if task_id in self._states:

@@ -24,9 +24,10 @@ CRITICAL_PROMPT = """你是一个批判型分析专家。你的核心能力是�
 class CriticalAgent(BaseAgent):
     def __init__(self):
         super().__init__(name='批判型', role_prompt=CRITICAL_PROMPT)
-    async def run(self, task: str, context: list[dict], model: str | None = None) -> dict:
-        # 1. 组装系统指令（角色 + 挂载的能力）
-        system_prompt = self.build_system_prompt()
+    async def run(self, task: str, context: list[dict], model: str | None = None,
+                  session_context: str = "", intent: str = "", tool_context: str = "") -> dict:
+        # 1. 组装系统指令（角色 + 会话上下文 + 意图 + 工具信息 + 挂载的能力）
+        system_prompt = self.build_system_prompt(session_context, intent, tool_context)
 
         # 2. 拼接对话上下文 + 当前任务
         messages = [*context, {"role": "user", "content": task}]

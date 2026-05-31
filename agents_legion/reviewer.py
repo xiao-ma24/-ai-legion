@@ -111,12 +111,16 @@ class Judge:
 """)
         return "\n".join(lines)
 
-    async def evaluate(self, outputs: list[dict]) -> dict:
+    async def evaluate(self, outputs: list[dict], session_context: str = "") -> dict:
         prompt = self.build_prompt()
-        content = "\n\n---\n\n".join([
+        parts = []
+        if session_context:
+            parts.append(f"## 对话上下文\n{session_context}\n")
+        parts.append("\n\n---\n\n".join([
             f"### 候选方案 {i+1}（{o['agent']}）\n{o['content']}"
             for i, o in enumerate(outputs)
-        ])
+        ]))
+        content = "\n".join(parts)
         result = await call_qianwen(
             prompt,
             [{"role": "user", "content": content}],
@@ -141,11 +145,13 @@ class Integrator:
         winner_name: str,
         winner_content: str,
         highlights: list[str],
+        session_context: str = "",
     ) -> str:
         highlights_text = "\n".join([f"- {h}" for h in highlights])
+        context_block = f"\n## 对话上下文\n{session_context}\n" if session_context else ""
         user_msg = f"""## 用户原始任务
 {task}
-
+{context_block}
 ## 最优方案（来自 {winner_name}）——以此为主体
 {winner_content}
 

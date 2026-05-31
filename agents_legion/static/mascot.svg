@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c6cff"/>
+      <stop offset="100%" style="stop-color:#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="hair-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft-glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Floating shadow -->
+  <ellipse cx="100" cy="185" rx="35" ry="8" fill="rgba(124,108,255,0.15)"/>
+
+  <!-- Body / Cloak -->
+  <path d="M 70 110 Q 70 155, 65 175 L 135 175 Q 130 155, 130 110 Z" fill="url(#body-grad)" opacity="0.9"/>
+  <path d="M 75 110 Q 75 150, 72 170 L 128 170 Q 125 150, 125 110 Z" fill="rgba(8,12,24,0.3)"/>
+
+  <!-- Neck -->
+  <rect x="92" y="95" width="16" height="18" rx="4" fill="#f0e6ff"/>
+
+  <!-- Head -->
+  <ellipse cx="100" cy="72" rx="30" ry="32" fill="#f0e6ff"/>
+  <!-- Blush -->
+  <ellipse cx="80" cy="80" rx="8" ry="5" fill="rgba(244,114,182,0.25)"/>
+  <ellipse cx="120" cy="80" rx="8" ry="5" fill="rgba(244,114,182,0.25)"/>
+
+  <!-- Hair -->
+  <path d="M 68 65 Q 68 35, 100 30 Q 132 35, 132 65 L 130 55 Q 125 45, 100 40 Q 75 45, 70 55 Z" fill="url(#hair-grad)"/>
+  <!-- Side hair -->
+  <path d="M 68 65 Q 60 80, 62 100 Q 65 85, 70 75" fill="url(#hair-grad)"/>
+  <path d="M 132 65 Q 140 80, 138 100 Q 135 85, 130 75" fill="url(#hair-grad)"/>
+  <!-- Hair tips -->
+  <path d="M 62 100 Q 58 110, 60 115 Q 64 108, 65 100" fill="url(#hair-grad)"/>
+  <path d="M 138 100 Q 142 110, 140 115 Q 136 108, 135 100" fill="url(#hair-grad)"/>
+
+  <!-- Eyes -->
+  <g filter="url(#glow)">
+    <ellipse cx="88" cy="72" rx="6" ry="7" fill="#6366f1"/>
+    <ellipse cx="112" cy="72" rx="6" ry="7" fill="#6366f1"/>
+    <ellipse cx="89" cy="70" rx="2.5" ry="3" fill="#fff"/>
+    <ellipse cx="113" cy="70" rx="2.5" ry="3" fill="#fff"/>
+    <circle cx="86" cy="74" r="1" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="110" cy="74" r="1" fill="rgba(255,255,255,0.5)"/>
+  </g>
+
+  <!-- Smile -->
+  <path d="M 94 84 Q 100 89, 106 84" stroke="#c084fc" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Hair accessory / star clip -->
+  <g filter="url(#soft-glow)" transform="translate(125, 52)">
+    <polygon points="0,-8 2,-2 8,-2 3,2 5,8 0,4 -5,8 -3,2 -8,-2 -2,-2" fill="#fbbf24"/>
+  </g>
+
+  <!-- Staff -->
+  <g filter="url(#glow)">
+    <line x1="150" y1="60" x2="150" y2="165" stroke="url(#body-grad)" stroke-width="3" stroke-linecap="round"/>
+    <!-- Staff orb -->
+    <circle cx="150" cy="55" r="10" fill="rgba(124,108,255,0.3)" stroke="url(#body-grad)" stroke-width="1.5"/>
+    <circle cx="150" cy="55" r="5" fill="#22d3ee" opacity="0.8"/>
+    <!-- Staff ring -->
+    <ellipse cx="150" cy="55" rx="14" ry="4" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1" transform="rotate(-20, 150, 55)"/>
+  </g>
+
+  <!-- Floating particles -->
+  <g opacity="0.6">
+    <circle cx="45" cy="50" r="2" fill="#22d3ee"><animate attributeName="cy" values="50;42;50" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="160" cy="40" r="1.5" fill="#f472b6"><animate attributeName="cy" values="40;33;40" dur="2.5s" repeatCount="indefinite"/></circle>
+    <circle cx="35" cy="90" r="1.5" fill="#fbbf24"><animate attributeName="cy" values="90;83;90" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="170" cy="100" r="1" fill="#7c6cff"><animate attributeName="cy" values="100;94;100" dur="2.8s" repeatCount="indefinite"/></circle>
+  </g>
+
+  <!-- Magic circle under feet -->
+  <g opacity="0.25" filter="url(#soft-glow)">
+    <ellipse cx="100" cy="178" rx="40" ry="8" fill="none" stroke="#7c6cff" stroke-width="0.8" stroke-dasharray="4 3">
+      <animateTransform attributeName="transform" type="rotate" values="0 100 178;360 100 178" dur="20s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+</svg>

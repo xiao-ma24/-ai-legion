@@ -3,18 +3,29 @@
 {% block sidebar %}
 <div id="sidebar">
   <div class="sidebar-header">
-    <h2>AI 军团</h2>
+    <div class="sidebar-logo">
+      <div class="logo-icon">A</div>
+      <div>
+        <h2>AI LEGION</h2>
+        <span class="logo-sub">多智能体协同系统</span>
+      </div>
+    </div>
     <form method="post" action="/chat/new">
-      <button class="btn-new">+ 新对话</button>
+      <button class="btn-new">✦ 新对话</button>
     </form>
   </div>
   <div class="session-list">
     {% for s in sessions %}
-    <a href="/chat/{{ s.id }}"
-       class="sess-item {% if s.id == session_id %}active{% endif %}">
-      <span class="sess-title">{{ s.title }}</span>
-      <span class="sess-meta">{{ s.count }}条 · {{ s.updated }}</span>
-    </a>
+    <div class="sess-item-wrap">
+      <a href="/chat/{{ s.id }}"
+         class="sess-item {% if s.id == session_id %}active{% endif %}">
+        <span class="sess-title">{{ s.title }}</span>
+        <span class="sess-meta">{{ s.count }}条 · {{ s.updated }}</span>
+      </a>
+      <form method="post" action="/chat/{{ s.id }}/delete" class="sess-delete-form">
+        <button type="submit" class="sess-delete" title="删除对话">✕</button>
+      </form>
+    </div>
     {% endfor %}
   </div>
 </div>
@@ -22,17 +33,37 @@
 
 {% block content %}
 {% for msg in history %}
-<div class="message {{ msg.role }}">{{ msg.content }}</div>
+<div class="message-row {{ msg.role }}">
+  {% if msg.role == 'user' %}
+    <div class="msg-avatar user-av">U</div>
+  {% else %}
+    <div class="msg-avatar assistant-av">A</div>
+  {% endif %}
+  <div class="message {{ msg.role }}">{{ msg.content }}</div>
+</div>
 {% endfor %}
 {% if not history %}
-<div class="message assistant">
-  你好！我是 AI 军团，由三个智能体协同为你服务。
-
-  🌊 发散型 (Qwen) — 广度探索、多角度联想
-  🔬 严谨型 (DeepSeek) — 逻辑推导、步骤验证
-  ⚔️ 批判型 (GLM) — 找漏洞、挑毛病
-
-  请输入你的问题，三路智能体会并行分析，评审整合出最优答案。
+<div class="welcome">
+  <img src="/static/mascot.svg" class="mascot" alt="AI Legion Mascot">
+  <h3>欢迎来到 AI 军团</h3>
+  <p>三个智能体协同作战，为你提供深度分析与最优方案</p>
+  <div class="welcome-agents">
+    <div class="welcome-agent">
+      <div class="wa-emoji">🌊</div>
+      <div class="wa-name role-divergent">发散型</div>
+      <div class="wa-desc">广度探索 · 多角度联想</div>
+    </div>
+    <div class="welcome-agent">
+      <div class="wa-emoji">🔬</div>
+      <div class="wa-name role-rigorous">严谨型</div>
+      <div class="wa-desc">逻辑推导 · 步骤验证</div>
+    </div>
+    <div class="welcome-agent">
+      <div class="wa-emoji">⚔️</div>
+      <div class="wa-name role-critical">批判型</div>
+      <div class="wa-desc">漏洞发现 · 风险评估</div>
+    </div>
+  </div>
 </div>
 {% endif %}
 {% endblock %}
@@ -47,8 +78,8 @@
   hx-on::before-request="document.querySelector('#send-btn').disabled=true"
 >
   <div class="input-area">
-    <textarea name="message" rows="2" placeholder="输入你的问题..." required></textarea>
-    <button type="submit" id="send-btn">发送</button>
+    <textarea name="message" rows="2" placeholder="输入你的问题，让军团为你分析..." required></textarea>
+    <button type="submit" id="send-btn" class="btn-send">✦ 发送</button>
   </div>
 </form>
 {% endblock %}

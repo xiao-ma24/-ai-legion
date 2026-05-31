@@ -79,9 +79,10 @@ class DivergentAgent(BaseAgent):
         # 把角色名字和角色 Prompt 传给基类
         super().__init__(name="发散型", role_prompt=DIVERGENT_PROMPT)
 
-    async def run(self, task: str, context: list[dict], model: str | None = None) -> dict:
-        # 1. 组装系统指令（角色 + 挂载的能力）
-        system_prompt = self.build_system_prompt()
+    async def run(self, task: str, context: list[dict], model: str | None = None,
+                  session_context: str = "", intent: str = "", tool_context: str = "") -> dict:
+        # 1. 组装系统指令（角色 + 会话上下文 + 意图 + 工具信息 + 挂载的能力）
+        system_prompt = self.build_system_prompt(session_context, intent, tool_context)
 
         # 2. 拼接对话上下文 + 当前任务
         messages = [*context, {"role": "user", "content": task}]

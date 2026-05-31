@@ -1,3 +1,12 @@
+"""L1 总控层：复杂度分析 + 自适应调度 + 工具调用
+
+职责：
+- analyze(): 分析任务能力需求（capabilities）
+- prepare_context(): 根据能力预搜索，注入外部信息
+- dispatch(): 按指定角色列表创建 Agent 并行执行
+- check_consistency(): analytical 路径的一致性检查
+"""
+
 import asyncio
 import json
 import re
@@ -7,8 +16,9 @@ from agents.rigorous_agent import RigorousAgent
 from agents.critical_agent import CriticalAgent
 from capabilities import CAPABILITY_MAP
 from llm_client import call_qianwen
+from tools import tool_executor, TOOL_DEFINITIONS
 
-# ── 规则快速通道：命中 → 直接判 simple ──
+# ── 规则快速通道 ──
 
 SIMPLE_PATTERNS = [
     r'(翻译|translate|译成|翻译成|用.*语言.*说)',
@@ -20,24 +30,7 @@ SIMPLE_PATTERNS = [
     r'(怎么读|怎么发音|拼音)',
 ]
 
-ANALYTICAL_HINTS = [
-    r'(对比|比较|哪个好|优劣|优缺点|选哪个|如何选择)',
-    r'(分析|为什么|原因|因素|影响)',
-    r'(建议|推荐|方法|怎么做|如何|怎么学)',
-    r'(方案|设计|规划|思路)',
-]
-
-
-def _quick_classify(task: str) -> str | None:
-    """规则快速通道：命中 simple 模式返回 'simple'，否则 None 走 LLM"""
-    text = task.strip().lower()
-    for pattern in SIMPLE_PATTERNS:
-        if re.search(pattern, text):
-            return "simple"
-    return None
-
-
-# ── LLM 分析 Prompt ──
+# ── LLM 分析 Prompt（仅用于 new_topic） ──
 
 ORCHESTRATOR_PROMPT = """你是一个任务分析器。你的唯一职责是分析用户输入，只输出严格 JSON。
 
@@ -92,8 +85,16 @@ CONSISTENCY_PROMPT = """你是一个一致性判断器。你需要判断两份�
 """
 
 
+def _quick_classify(task: str) -> str | None:
+    text = task.strip().lower()
+    for pattern in SIMPLE_PATTERNS:
+        if re.search(pattern, text):
+            return "simple"
+    return None
+
+
 class Orchestrator:
-    """L1 总控层：复杂度估算 → 自适应调度"""
+    """L1 总控层"""
 
     def __init__(self):
         self.agent_classes = {
@@ -102,13 +103,17 @@ class Orchestrator:
             "critical": CriticalAgent,
         }
 
-    # ── 分析 ──
+    # ── 分析（new_topic 时调用） ──
 
     async def analyze(self, task: str) -> dict:
-        """规则快判 + LLM 精确分析"""
         quick = _quick_classify(task)
         if quick:
-            return {"complexity": "simple", "capabilities": ["writing"], "budget": "normal", "quick": True}
+            return {
+                "complexity": "simple",
+                "capabilities": ["writing"],
+                "budget": "normal",
+                "quick": True,
+            }
 
         result = await call_qianwen(
             ORCHESTRATOR_PROMPT,
@@ -120,41 +125,110 @@ class Orchestrator:
             plan["quick"] = False
             return plan
         except json.JSONDecodeError:
-            return {"complexity": "analytical", "capabilities": ["research", "writing"], "budget": "normal", "quick": False}
+            return {
+                "complexity": "analytical",
+                "capabilities": ["research", "writing"],
+                "budget": "normal",
+                "quick": False,
+            }
 
-    # ── 调度 ──
+    # ── 上下文准备（预搜索） ──
 
-    async def dispatch(self, task: str, plan: dict, context: list[dict]) -> tuple[list[dict], str]:
-        """按复杂度调度不同 Agent 组合"""
-        complexity = plan.get("complexity", "analytical")
-        capability_names = plan.get("capabilities", ["research"])
+    async def prepare_context(
+        self, task: str, capabilities: list[str],
+        push_fn=None
+    ) -> dict:
+        """如果任务需要 research 能力，预先搜索网页和 ArXiv，返回上下文信息"""
+        context_data = {"search_results": [], "arxiv_results": []}
 
-        if complexity == "simple":
-            roles = ["rigorous"]
-        elif complexity == "analytical":
-            roles = ["divergent", "rigorous"]
-        else:
-            roles = ["divergent", "rigorous", "critical"]
+        if "research" not in capabilities:
+            return context_data
 
+        # 网页搜索
+        if push_fn:
+            await push_fn("tool", "🔍 正在搜索网页...", "active")
+        try:
+            results = await tool_executor.execute("web_search", query=task, max_results=5)
+            if results and not str(results).startswith("[工具错误"):
+                context_data["search_results"] = json.loads(results) if isinstance(results, str) else results
+        except Exception:
+            pass
+        if push_fn:
+            count = len(context_data["search_results"])
+            await push_fn("tool", f"🔍 网页搜索完成 — {count} 条结果", "done")
+
+        # ArXiv 搜索
+        if push_fn:
+            await push_fn("tool", "📄 正在搜索学术论文 (ArXiv)...", "active")
+        try:
+            arxiv_r = await tool_executor.execute("arxiv_search", query=task, max_results=3)
+            if arxiv_r and not str(arxiv_r).startswith("[工具错误"):
+                context_data["arxiv_results"] = json.loads(arxiv_r) if isinstance(arxiv_r, str) else arxiv_r
+        except Exception:
+            pass
+        if push_fn:
+            count = len(context_data["arxiv_results"])
+            await push_fn("tool", f"📄 ArXiv 论文搜索完成 — {count} 篇论文", "done")
+
+        return context_data
+
+    def format_context_for_agent(self, context_data: dict) -> str:
+        """将搜索上下文格式化为 Agent 可读的文本"""
+        parts = []
+        if context_data.get("search_results"):
+            parts.append("## 网页搜索结果\n")
+            for i, r in enumerate(context_data["search_results"][:3], 1):
+                parts.append(f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}")
+
+        if context_data.get("arxiv_results"):
+            parts.append("\n## ArXiv 论文\n")
+            for i, r in enumerate(context_data["arxiv_results"][:3], 1):
+                authors = ", ".join(r.get("authors", []))
+                parts.append(f"{i}. **{r['title']}** ({r.get('year', '')})\n   作者: {authors}\n   {r['summary'][:200]}")
+
+        return "\n".join(parts) if parts else ""
+
+    # ── 调度（按角色列表创建 Agent 并行执行） ──
+
+    async def dispatch(
+        self,
+        task: str,
+        roles: list[str],
+        capabilities: list[str],
+        context: list[dict],
+        session_context: str = "",
+        intent: str = "",
+        search_context: str = "",
+    ) -> list[dict]:
         agents = []
         for role_name in roles:
-            agent = self.agent_classes[role_name]()
-            for cap_name in capability_names:
+            agent_cls = self.agent_classes.get(role_name)
+            if not agent_cls:
+                continue
+            agent = agent_cls()
+            for cap_name in capabilities:
                 cap_cls = CAPABILITY_MAP.get(cap_name)
                 if cap_cls:
                     agent.attach_capability(cap_cls().get_prompt())
             agents.append(agent)
 
+        if not agents:
+            return []
+
         async def run_one(agent):
-            return await agent.run(task, context)
+            return await agent.run(
+                task, context,
+                session_context=session_context,
+                intent=intent,
+                tool_context=search_context,
+            )
 
         results = await asyncio.gather(*[run_one(a) for a in agents])
-        return results, complexity
+        return results
 
     # ── 一致性检查（analytical 路径） ──
 
     async def check_consistency(self, task: str, output_a: str, output_b: str) -> dict:
-        """判断两 Agent 输出是否高度一致"""
         user_msg = f"""## 用户任务
 {task}
 
@@ -174,8 +248,6 @@ class Orchestrator:
         except json.JSONDecodeError:
             return {"consistent": False, "confidence": 0, "better_index": 0}
 
-    # ── 获取复杂度对应的标签 ──
-
     @staticmethod
     def complexity_label(level: str) -> str:
         return {
@@ -183,3 +255,14 @@ class Orchestrator:
             "analytical": "中等任务",
             "strategic": "复杂任务",
         }.get(level, "未知")
+
+    @staticmethod
+    def intent_label(intent: str) -> str:
+        return {
+            "new_topic": "新话题",
+            "followup": "追问深入",
+            "compare_choice": "对比选择",
+            "execute": "执行落地",
+            "casual_confirm": "轻量反馈",
+            "clarify": "澄清补充",
+        }.get(intent, intent)

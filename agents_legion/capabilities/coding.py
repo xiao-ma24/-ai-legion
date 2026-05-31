@@ -24,6 +24,6 @@ CODING_PROMPT = """
 """
 
 
-class MathCapability(BaseCapability):
-    name = "数学"
-    prompt = MATH_PROMPT
+class CodingCapability(BaseCapability):
+    name = "编码"
+    prompt = CODING_PROMPT  
