@@ -6,3 +6,4 @@ sse-starlette==2.2.1
 anthropic==0.42.0
 openai==1.58.1
 python-decouple==3.8
+arxiv==2.1.3
